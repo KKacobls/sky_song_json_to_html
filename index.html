@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON to AHK Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            font-weight: 300;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+        }
+
+        .section h2 {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            font-weight: 500;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .file-input-wrapper:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-status {
+            margin-left: 15px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #555;
+            margin-right: 10px;
+        }
+
+        .info-value {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            align-items: center;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .setting-label {
+            font-weight: 500;
+            color: #555;
+            white-space: nowrap;
+        }
+
+        input[type="number"], input[type="range"] {
+            padding: 8px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        input[type="range"] {
+            width: 120px;
+            height: 6px;
+            background: #e1e5e9;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+        }
+
+        .speed-display {
+            font-weight: 600;
+            color: #667eea;
+            min-width: 50px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #11998e, #38ef7d);
+            color: white;
+            box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(17, 153, 142, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .preview-area {
+            background: #2d3748;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 20px;
+            border: none;
+            background: transparent;
+            color: #e2e8f0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+        }
+
+        textarea::placeholder {
+            color: #718096;
+        }
+
+        .status-bar {
+            margin-top: 20px;
+            padding: 12px 20px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .error {
+            color: #e53e3e;
+            background: rgba(229, 62, 62, 0.1);
+            border-left-color: #e53e3e;
+        }
+
+        .success {
+            color: #38a169;
+            background: rgba(56, 161, 105, 0.1);
+            border-left-color: #38a169;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            button {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JSON to AHK Converter</h1>
+        
+        <div class="section fade-in">
+            <h2>Load JSON File</h2>
+            <div class="file-input-wrapper">
+                <input type="file" id="fileInput" accept=".json">
+                Select JSON File
+            </div>
+            <span class="file-status" id="fileStatus">No file selected</span>
+        </div>
+
+        <div class="section hidden" id="songInfo">
+            <h2>Song Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Title:</span>
+                    <span class="info-value" id="songTitle">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">BPM:</span>
+                    <span class="info-value" id="songBPM">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Beats:</span>
+                    <span class="info-value" id="songBeats">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Settings</h2>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label class="setting-label" for="startDelay">Start Delay (seconds):</label>
+                    <input type="number" id="startDelay" min="0" max="10" value="3">
+                </div>
+                <div class="setting-item">
+                    <label class="setting-label" for="speedSlider">Speed:</label>
+                    <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.1" value="1.0">
+                    <span class="speed-display" id="speedDisplay">1.0x</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="button-group">
+                <button class="btn-primary" id="generateBtn" disabled>Generate AHK</button>
+                <button class="btn-secondary" id="saveBtn" disabled>Save AHK File</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>AHK Script Preview</h2>
+            <div class="preview-area">
+                <textarea id="previewText" readonly placeholder="Generated AHK script will appear here..."></textarea>
+            </div>
+        </div>
+
+        <div class="status-bar" id="statusBar">Ready - Please load a JSON file</div>
+    </div>
+
+    <script>
+        class JSONToAHKConverter {
+            constructor() {
+                this.keyMapping = {
+                    1: 'y', 2: 'u', 3: 'i', 4: 'o', 5: 'p',
+                    6: 'h', 7: 'j', 8: 'k', 9: 'l', 10: ';',
+                    11: 'n', 12: 'm', 13: ',', 14: '.', 15: '/'
+                };
+                
+                this.songData = null;
+                this.ahkScript = "";
+                
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('fileInput').addEventListener('change', (e) => this.loadJSON(e));
+                document.getElementById('speedSlider').addEventListener('input', (e) => this.updateSpeedDisplay(e));
+                document.getElementById('generateBtn').addEventListener('click', () => this.generateAHK());
+                document.getElementById('saveBtn').addEventListener('click', () => this.saveAHK());
+            }
+
+            updateSpeedDisplay(event) {
+                const value = parseFloat(event.target.value);
+                document.getElementById('speedDisplay').textContent = `${value.toFixed(1)}x`;
+            }
+
+            loadJSON(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        this.songData = JSON.parse(e.target.result);
+                        
+                        if (!this.validateJSON()) {
+                            return;
+                        }
+
+                        // Update UI
+                        document.getElementById('fileStatus').textContent = file.name;
+                        document.getElementById('songTitle').textContent = this.songData.title || 'Unknown';
+                        document.getElementById('songBPM').textContent = this.songData.bpm || '120';
+                        document.getElementById('songBeats').textContent = this.songData.beats ? this.songData.beats.length : '0';
+                        
+                        // Show song info section
+                        const songInfoSection = document.getElementById('songInfo');
+                        songInfoSection.classList.remove('hidden');
+                        songInfoSection.classList.add('fade-in');
+                        
+                        // Enable generate button
+                        document.getElementById('generateBtn').disabled = false;
+                        
+                        this.updateStatus(`Loaded: ${this.songData.title || 'Unknown'}`, 'success');
+                        
+                    } catch (error) {
+                        this.showError(`Invalid JSON format: ${error.message}`);
+                    }
+                };
+                
+                reader.readAsText(file);
+            }
+
+            validateJSON() {
+                const requiredFields = ['title', 'bpm', 'beats'];
+                
+                for (const field of requiredFields) {
+                    if (!(field in this.songData)) {
+                        this.showError(`Missing required field: ${field}`);
+                        return false;
+                    }
+                }
+                
+                const beats = this.songData.beats;
+                if (!Array.isArray(beats) || beats.length === 0) {
+                    this.showError("beats must be a non-empty array");
+                    return false;
+                }
+                
+                return true;
+            }
+
+            escapeAHKKey(key) {
+                const specialChars = {
+                    ';': '{;}',
+                    ',': '{,}',
+                    '+': '{+}',
+                    '^': '{^}',
+                    '!': '{!}',
+                    '#': '{#}',
+                    '{': '{{}',
+                    '}': '{}}'
+                };
+                
+                return specialChars[key] || key;
+            }
+
+            generateAHK() {
+                if (!this.songData) {
+                    this.showError("Please load a JSON file first");
+                    return;
+                }
+
+                const bpm = this.songData.bpm || 120;
+                const beats = this.songData.beats || [];
+                const title = this.songData.title || 'Unknown';
+                const tempo = parseFloat(document.getElementById('speedSlider').value);
+                const startDelay = parseInt(document.getElementById('startDelay').value);
+
+                // Calculate beat delay in milliseconds
+                const beatDelay = Math.round((60000 / bpm) / tempo);
+
+                // Get current date
+                const now = new Date();
+                const dateStr = now.getFullYear() + '-' + 
+                    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(now.getDate()).padStart(2, '0') + ' ' +
+                    String(now.getHours()).padStart(2, '0') + ':' +
+                    String(now.getMinutes()).padStart(2, '0') + ':' +
+                    String(now.getSeconds()).padStart(2, '0');
+
+                // Generate AHK script
+                const scriptLines = [
+                    `; Auto-generated AHK script`,
+                    `; Song: ${title}`,
+                    `; BPM: ${bpm} | Speed: ${tempo}x | Beats: ${beats.length}`,
+                    `; Generated: ${dateStr}`,
+                    `; Controls: F1=Start (press once) | F2=Pause/Resume | F3=Stop`,
+                    ``,
+                    `toggle := true`,
+                    `paused := false`,
+                    `playing := false`,
+                    ``,
+                    `F1::`,
+                    `if (!toggle || playing)`,
+                    `    return`,
+                    `playing := true`,
+                    `paused := false`,
+                    `ToolTip, Starting in ${startDelay} seconds...`,
+                    `SetTimer, RemoveToolTip, -1000`,
+                    `Sleep, ${startDelay * 1000}`,
+                    `Loop`,
+                    `{`,
+                    `    if (!toggle || !playing)`,
+                    `        break`,
+                    `    `,
+                    `    while (paused) {`,
+                    `        Sleep, 100`,
+                    `        if (!toggle || !playing)`,
+                    `            break`,
+                    `    }`,
+                    ``
+                ];
+
+                // Generate the sequence inside the loop
+                for (let i = 0; i < beats.length; i++) {
+                    const beat = beats[i];
+                    const keys = beat.keys || [];
+
+                    if (keys.length > 0) {
+                        const keyChars = [];
+                        for (const key of keys) {
+                            if (key in this.keyMapping) {
+                                const escapedKey = this.escapeAHKKey(this.keyMapping[key]);
+                                keyChars.push(escapedKey);
+                            }
+                        }
+
+                        if (keyChars.length > 0) {
+                            if (keyChars.length === 1) {
+                                scriptLines.push(`    Send, ${keyChars[0]}`);
+                                scriptLines.push(`    Sleep, 50`);
+                            } else {
+                                // Multiple keys - send them one by one
+                                for (const keyChar of keyChars) {
+                                    scriptLines.push(`    Send, ${keyChar}`);
+                                    scriptLines.push(`    Sleep, 10`);
+                                }
+                                scriptLines.push(`    Sleep, 40`);
+                            }
+                        }
+                    }
+
+                    // Wait for next beat
+                    scriptLines.push(`    Sleep, ${beatDelay}`);
+                }
+
+                // Close the loop and add other hotkeys
+                scriptLines.push(
+                    `}`,
+                    `playing := false`,
+                    `ToolTip, Finished`,
+                    `SetTimer, RemoveToolTip, -2000`,
+                    `SetTimer, ExitApp, -3000`,
+                    `return`,
+                    ``,
+                    `F2::`,
+                    `paused := !paused`,
+                    `ToolTip % paused ? "Paused" : "Resumed"`,
+                    `SetTimer, RemoveToolTip, -1000`,
+                    `return`,
+                    ``,
+                    `F3::`,
+                    `toggle := false`,
+                    `paused := false`,
+                    `ToolTip, Stopped`,
+                    `SetTimer, RemoveToolTip, -1000`,
+                    `return`,
+                    ``,
+                    `RemoveToolTip:`,
+                    `ToolTip`,
+                    `return`
+                );
+
+                this.ahkScript = scriptLines.join('\n');
+
+                // Display in preview
+                document.getElementById('previewText').value = this.ahkScript;
+
+                // Enable save button
+                document.getElementById('saveBtn').disabled = false;
+
+                this.updateStatus("AHK script generated successfully", 'success');
+            }
+
+            saveAHK() {
+                if (!this.ahkScript) {
+                    this.showError("Please generate AHK script first");
+                    return;
+                }
+
+                // Create filename
+                let filename = "song_script.ahk";
+                if (this.songData && this.songData.title) {
+                    const safeTitle = this.songData.title.replace(/[^a-zA-Z0-9\s\-_]/g, '').trim();
+                    filename = `${safeTitle}.ahk`;
+                }
+
+                // Create download
+                const blob = new Blob([this.ahkScript], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                this.updateStatus(`Script saved: ${filename}`, 'success');
+            }
+
+            showError(message) {
+                this.updateStatus(message, 'error');
+            }
+
+            updateStatus(message, type = '') {
+                const statusBar = document.getElementById('statusBar');
+                statusBar.textContent = message;
+                statusBar.className = 'status-bar';
+                if (type) {
+                    statusBar.classList.add(type);
+                }
+            }
+        }
+
+        // Initialize the converter when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new JSONToAHKConverter();
+        });
+    </script>
+</body>
+</html>
