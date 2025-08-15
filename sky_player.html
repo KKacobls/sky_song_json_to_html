@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sky 樂器演奏器</title>
+    <div id="navbar"></div>
     <style>
         * {
             margin: 0;
@@ -548,6 +549,15 @@
     </div>
 
     <script>
+        // 嘗試載入 navbar（如果存在的話）
+        try {
+            fetch('navbar.html')
+                .then(res => res.text())
+                .then(html => document.getElementById('navbar').innerHTML = html)
+                .catch(err => console.log('navbar.html not found'));
+        } catch (e) {
+            console.log('navbar.html not available');
+        }
         let volume = 50;
         let songData = null;
         let isPlaying = false;
