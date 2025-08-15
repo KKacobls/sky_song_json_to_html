@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sky 樂器演奏器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #4a5568;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .volume-label {
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .volume-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .volume-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .volume-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            min-width: 50px;
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .file-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: none;
+        }
+
+        .file-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .json-input-btn {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: #2d3748;
+            padding: 12px 24px;
+            cursor: pointer;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border: none;
+        }
+
+        .json-input-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4a5568;
+        }
+
+        .close-btn {
+            background: #f56565;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            background: #e53e3e;
+        }
+
+        .json-textarea {
+            width: 100%;
+            height: 300px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 20px;
+        }
+
+        .json-textarea:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .confirm-btn {
+            background: #48bb78;
+            color: white;
+        }
+
+        .confirm-btn:hover {
+            background: #38a169;
+        }
+
+        .cancel-btn {
+            background: #cbd5e0;
+            color: #4a5568;
+        }
+
+        .cancel-btn:hover {
+            background: #a0aec0;
+        }
+
+        .sample-json {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .sample-title {
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .control-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .play-btn {
+            background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            color: #2d3748;
+        }
+
+        .play-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stop-btn {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: #2d3748;
+        }
+
+        .stop-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .control-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .song-info {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .song-info-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .song-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            text-align: center;
+        }
+
+        .song-detail {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #4a5568;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .detail-label {
+            display: block;
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+
+        .keyboard {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .key {
+            width: 70px;
+            height: 70px;
+            border: 3px solid #e2e8f0;
+            background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
+            color: #4a5568;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 15px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            user-select: none;
+        }
+
+        .key:hover {
+            background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .key:active, .key.active {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .key.current-beat {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #2d3748;
+            animation: pulse 0.5s ease-in-out;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .instructions {
+            background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .instructions h3 {
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .instructions p {
+            color: #718096;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .key {
+                width: 50px;
+                height: 50px;
+                font-size: 18px;
+            }
+
+            .row {
+                gap: 5px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Sky 樂器演奏器 🎵</h1>
+        </div>
+
+        <div class="volume-control">
+            <span class="volume-label">🔊 音量控制</span>
+            <button class="volume-btn" id="decrease">−</button>
+            <div class="volume-display" id="volume">50</div>
+            <button class="volume-btn" id="increase">+</button>
+        </div>
+
+        <div class="file-controls">
+            <input type="file" id="jsonFile" class="file-input" accept=".json">
+            <label for="jsonFile" class="file-label">📁 載入 JSON 檔案</label>
+            <button class="json-input-btn" id="jsonInputBtn">✨ 貼上 JSON 字串</button>
+            <button class="control-btn play-btn" id="playBtn" disabled>▶️ 播放</button>
+            <button class="control-btn stop-btn" id="stopBtn" disabled>⏹️ 停止</button>
+        </div>
+
+        <!-- JSON 輸入視窗 -->
+        <div class="modal-overlay" id="jsonModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">🎵 輸入 JSON 樂曲資料</h3>
+                    <button class="close-btn" id="closeModal">×</button>
+                </div>
+                
+                <div class="sample-json">
+                    <div class="sample-title">📋 範例格式：</div>
+                    <pre style="margin: 0; font-size: 12px; color: #718096; overflow-x: auto;">{
+  "title": "我的樂曲",
+  "bpm": 120,
+  "keyMapping": {
+    "1-5": "YUIOP",
+    "6-10": "HJKL;",
+    "11-15": "NM,./"
+  },
+  "beats": [
+    {"beat": 1, "keys": [4], "duration": 1},
+    {"beat": 2, "keys": [8], "duration": 1}
+  ]
+}</pre>
+                </div>
+                
+                <textarea 
+                    id="jsonTextarea" 
+                    class="json-textarea" 
+                    placeholder="請在此貼上您的 JSON 樂曲資料..."
+                ></textarea>
+                
+                <div class="modal-buttons">
+                    <button class="modal-btn cancel-btn" id="cancelBtn">取消</button>
+                    <button class="modal-btn confirm-btn" id="confirmBtn">確認載入</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="song-info" id="songInfo" style="display: none;">
+            <div class="song-info-title">🎶 樂曲資訊</div>
+            <div class="song-details">
+                <div class="song-detail">
+                    <span class="detail-label">歌曲名稱</span>
+                    <div id="songTitle">未載入樂曲</div>
+                </div>
+                <div class="song-detail">
+                    <span class="detail-label">BPM (每分鐘節拍)</span>
+                    <div id="songBpm">--</div>
+                </div>
+                <div class="song-detail">
+                    <span class="detail-label">總節拍數</span>
+                    <div id="songBeats">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="keyboard">
+            <div class="row">
+                <div class="key" data-key="1">♪</div>
+                <div class="key" data-key="2">♫</div>
+                <div class="key" data-key="3">♬</div>
+                <div class="key" data-key="4">♭</div>
+                <div class="key" data-key="5">♯</div>
+            </div>
+            <div class="row">
+                <div class="key" data-key="6">🎵</div>
+                <div class="key" data-key="7">🎶</div>
+                <div class="key" data-key="8">🎼</div>
+                <div class="key" data-key="9">🎹</div>
+                <div class="key" data-key="10">🎺</div>
+            </div>
+            <div class="row">
+                <div class="key" data-key="11">🎻</div>
+                <div class="key" data-key="12">🎸</div>
+                <div class="key" data-key="13">🥁</div>
+                <div class="key" data-key="14">🎤</div>
+                <div class="key" data-key="15">🎧</div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>🎮 操作說明</h3>
+            <p>
+                使用鍵盤按鍵 <strong>Y U I O P H J K L ; N M , . /</strong> 來演奏，或直接點擊上方的音符按鈕。
+                載入 JSON 檔案後可以自動播放樂曲，音量控制可以調整演奏音量大小。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let volume = 50;
+        let songData = null;
+        let isPlaying = false;
+        let currentBeat = 0;
+        let playInterval = null;
+        let audioContext = null;
+
+        // 初始化音頻上下文
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // 播放音符
+        function playNote(frequency = 440, duration = 0.1) {
+            initAudioContext();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            const actualVolume = volume / 100 * 0.3; // 限制最大音量
+            gainNode.gain.setValueAtTime(actualVolume, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        // 音量控制
+        document.getElementById('decrease').addEventListener('click', () => {
+            volume = Math.max(0, volume - 10);
+            document.getElementById('volume').textContent = volume;
+        });
+
+        document.getElementById('increase').addEventListener('click', () => {
+            volume = Math.min(100, volume + 10);
+            document.getElementById('volume').textContent = volume;
+        });
+
+        // 鍵盤按鍵映射
+        const keyMapping = {
+            'Y': 1, 'U': 2, 'I': 3, 'O': 4, 'P': 5,
+            'H': 6, 'J': 7, 'K': 8, 'L': 9, ';': 10,
+            'N': 11, 'M': 12, ',': 13, '.': 14, '/': 15
+        };
+
+        // 音符頻率映射 (C大調音階)
+        const frequencies = {
+            1: 261.63, 2: 293.66, 3: 329.63, 4: 349.23, 5: 392.00,
+            6: 440.00, 7: 493.88, 8: 523.25, 9: 587.33, 10: 659.25,
+            11: 698.46, 12: 783.99, 13: 880.00, 14: 987.77, 15: 1046.50
+        };
+
+        // 鍵盤事件
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toUpperCase();
+            if (keyMapping[key]) {
+                const keyNum = keyMapping[key];
+                const keyElement = document.querySelector(`[data-key="${keyNum}"]`);
+                if (keyElement && !keyElement.classList.contains('active')) {
+                    keyElement.classList.add('active');
+                    playNote(frequencies[keyNum], 0.2);
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toUpperCase();
+            if (keyMapping[key]) {
+                const keyNum = keyMapping[key];
+                const keyElement = document.querySelector(`[data-key="${keyNum}"]`);
+                if (keyElement) {
+                    keyElement.classList.remove('active');
+                }
+            }
+        });
+
+        // 滑鼠點擊鍵盤
+        document.querySelectorAll('.key').forEach(key => {
+            key.addEventListener('mousedown', () => {
+                const keyNum = parseInt(key.dataset.key);
+                key.classList.add('active');
+                playNote(frequencies[keyNum], 0.2);
+            });
+
+            key.addEventListener('mouseup', () => {
+                key.classList.remove('active');
+            });
+
+            key.addEventListener('mouseleave', () => {
+                key.classList.remove('active');
+            });
+        });
+
+        // JSON 檔案載入
+        document.getElementById('jsonFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        songData = JSON.parse(event.target.result);
+                        displaySongInfo();
+                        document.getElementById('playBtn').disabled = false;
+                        document.getElementById('stopBtn').disabled = false;
+                    } catch (error) {
+                        alert('JSON 檔案格式錯誤：' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // JSON 輸入視窗控制
+        const jsonModal = document.getElementById('jsonModal');
+        const jsonInputBtn = document.getElementById('jsonInputBtn');
+        const closeModal = document.getElementById('closeModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const jsonTextarea = document.getElementById('jsonTextarea');
+
+        // 開啟視窗
+        jsonInputBtn.addEventListener('click', () => {
+            jsonModal.style.display = 'flex';
+            jsonTextarea.focus();
+        });
+
+        // 關閉視窗
+        function closeJsonModal() {
+            jsonModal.style.display = 'none';
+            jsonTextarea.value = '';
+        }
+
+        closeModal.addEventListener('click', closeJsonModal);
+        cancelBtn.addEventListener('click', closeJsonModal);
+
+        // 點擊背景關閉視窗
+        jsonModal.addEventListener('click', (e) => {
+            if (e.target === jsonModal) {
+                closeJsonModal();
+            }
+        });
+
+        // ESC 鍵關閉視窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && jsonModal.style.display === 'flex') {
+                closeJsonModal();
+            }
+        });
+
+        // 確認載入 JSON
+        confirmBtn.addEventListener('click', () => {
+            const jsonText = jsonTextarea.value.trim();
+            if (!jsonText) {
+                alert('請輸入 JSON 資料！');
+                return;
+            }
+
+            try {
+                songData = JSON.parse(jsonText);
+                displaySongInfo();
+                document.getElementById('playBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = false;
+                closeJsonModal();
+                alert('JSON 樂曲載入成功！🎉');
+            } catch (error) {
+                alert('JSON 格式錯誤：' + error.message);
+            }
+        });
+
+        // 顯示歌曲資訊
+        function displaySongInfo() {
+            if (songData) {
+                document.getElementById('songInfo').style.display = 'block';
+                document.getElementById('songTitle').textContent = songData.title || '未知樂曲';
+                document.getElementById('songBpm').textContent = songData.bpm || '--';
+                document.getElementById('songBeats').textContent = songData.beats ? songData.beats.length : '--';
+            }
+        }
+
+        // 播放控制
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (!songData || isPlaying) return;
+            
+            isPlaying = true;
+            currentBeat = 0;
+            const beatDuration = 60000 / songData.bpm; // 毫秒
+            
+            document.getElementById('playBtn').disabled = true;
+            
+            function playBeat() {
+                if (currentBeat >= songData.beats.length) {
+                    stopPlaying();
+                    return;
+                }
+                
+                const beat = songData.beats[currentBeat];
+                
+                // 清除之前的高亮
+                document.querySelectorAll('.key').forEach(key => {
+                    key.classList.remove('current-beat');
+                });
+                
+                // 播放當前節拍的按鍵
+                beat.keys.forEach(keyNum => {
+                    const keyElement = document.querySelector(`[data-key="${keyNum}"]`);
+                    if (keyElement) {
+                        keyElement.classList.add('current-beat');
+                        playNote(frequencies[keyNum], beat.duration * beatDuration / 1000);
+                    }
+                });
+                
+                currentBeat++;
+                
+                if (isPlaying) {
+                    playInterval = setTimeout(playBeat, beatDuration * beat.duration);
+                }
+            }
+            
+            playBeat();
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', stopPlaying);
+
+        function stopPlaying() {
+            isPlaying = false;
+            currentBeat = 0;
+            
+            if (playInterval) {
+                clearTimeout(playInterval);
+                playInterval = null;
+            }
+            
+            document.querySelectorAll('.key').forEach(key => {
+                key.classList.remove('current-beat');
+            });
+            
+            document.getElementById('playBtn').disabled = false;
+        }
+    </script>
+</body>
+</html>
