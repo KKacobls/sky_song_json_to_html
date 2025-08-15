@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JSON to AHK Converter</title>
+    <div id="navbar"></div>
+    <script>
+    fetch('navbar.html')
+        .then(res => res.text())
+        .then(html => document.getElementById('navbar').innerHTML = html);
+    </script>
     <style>
         * {
             margin: 0;
@@ -133,7 +139,7 @@
             white-space: nowrap;
         }
 
-        input[type="number"], input[type="range"] {
+        input[type="number"], input[type="range"], select {
             padding: 8px 12px;
             border: 2px solid #e1e5e9;
             border-radius: 8px;
@@ -141,7 +147,7 @@
             transition: all 0.3s ease;
         }
 
-        input[type="number"]:focus {
+        input[type="number"]:focus, select:focus {
             border-color: #667eea;
             outline: none;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -346,6 +352,13 @@
                     <input type="range" id="speedSlider" min="0.1" max="5.0" step="0.1" value="1.0">
                     <span class="speed-display" id="speedDisplay">1.0x</span>
                 </div>
+                <div class="setting-item">
+                    <label class="setting-label" for="loopMode">Play Mode:</label>
+                    <select id="loopMode">
+                        <option value="once">Play Once</option>
+                        <option value="loop">Loop Forever</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -475,9 +488,33 @@
                 const title = this.songData.title || 'Unknown';
                 const tempo = parseFloat(document.getElementById('speedSlider').value);
                 const startDelay = parseInt(document.getElementById('startDelay').value);
+                const loopMode = document.getElementById('loopMode').value;
 
                 // Calculate beat delay in milliseconds
                 const beatDelay = Math.round((60000 / bpm) / tempo);
+
+                // Calculate total duration
+                let totalSleepMs = startDelay * 1000; // Start delay
+                for (let i = 0; i < beats.length; i++) {
+                    const beat = beats[i];
+                    const keys = beat.keys || [];
+                    
+                    if (keys.length > 0) {
+                        if (keys.length === 1) {
+                            totalSleepMs += 50; // Single key sleep
+                        } else {
+                            totalSleepMs += (keys.length * 10) + 40; // Multiple keys sleep
+                        }
+                    }
+                    totalSleepMs += beatDelay; // Beat delay
+                }
+
+                const totalSeconds = Math.ceil(totalSleepMs / 1000);
+                const currentTime = new Date();
+                const endTime = new Date(currentTime.getTime() + totalSleepMs);
+                const endTimeStr = endTime.getHours().toString().padStart(2, '0') + ':' + 
+                                  endTime.getMinutes().toString().padStart(2, '0') + ':' + 
+                                  endTime.getSeconds().toString().padStart(2, '0');
 
                 // Get current date
                 const now = new Date();
@@ -488,11 +525,13 @@
                     String(now.getMinutes()).padStart(2, '0') + ':' +
                     String(now.getSeconds()).padStart(2, '0');
 
-                // Generate AHK script
+                // Generate AHK script header
                 const scriptLines = [
                     `; Auto-generated AHK script`,
                     `; Song: ${title}`,
                     `; BPM: ${bpm} | Speed: ${tempo}x | Beats: ${beats.length}`,
+                    `; Mode: ${loopMode === 'once' ? 'Play Once' : 'Loop Forever'}`,
+                    `; Duration: ~${totalSeconds} seconds`,
                     `; Generated: ${dateStr}`,
                     `; Controls: F1=Start (press once) | F2=Pause/Resume | F3=Stop`,
                     ``,
@@ -505,26 +544,40 @@
                     `    return`,
                     `playing := true`,
                     `paused := false`,
-                    `ToolTip, Starting in ${startDelay} seconds...`,
-                    `SetTimer, RemoveToolTip, -1000`,
-                    `Sleep, ${startDelay * 1000}`,
-                    `Loop`,
-                    `{`,
-                    `    if (!toggle || !playing)`,
-                    `        break`,
-                    `    `,
-                    `    while (paused) {`,
-                    `        Sleep, 100`,
-                    `        if (!toggle || !playing)`,
-                    `            break`,
-                    `    }`,
-                    ``
+                    `ToolTip, Starting... Will finish at ${endTimeStr} (${totalSeconds}s)`,
+                    `SetTimer, RemoveToolTip, -2000`,
+                    `Sleep, ${startDelay * 1000}`
                 ];
 
-                // Generate the sequence inside the loop
+                // Add loop structure for loop mode
+                if (loopMode === 'loop') {
+                    scriptLines.push(`Loop`);
+                    scriptLines.push(`{`);
+                    scriptLines.push(`    if (!toggle || !playing)`);
+                    scriptLines.push(`        break`);
+                    scriptLines.push(`    `);
+                    scriptLines.push(`    while (paused) {`);
+                    scriptLines.push(`        Sleep, 100`);
+                    scriptLines.push(`        if (!toggle || !playing)`);
+                    scriptLines.push(`            break`);
+                    scriptLines.push(`    }`);
+                }
+
+                // Generate the beat sequence
                 for (let i = 0; i < beats.length; i++) {
                     const beat = beats[i];
                     const keys = beat.keys || [];
+
+                    // Add pause check for single play mode
+                    if (loopMode === 'once') {
+                        scriptLines.push(`if (!toggle || !playing)`);
+                        scriptLines.push(`    Goto, EndScript`);
+                        scriptLines.push(`while (paused) {`);
+                        scriptLines.push(`    Sleep, 100`);
+                        scriptLines.push(`    if (!toggle || !playing)`);
+                        scriptLines.push(`        Goto, EndScript`);
+                        scriptLines.push(`}`);
+                    }
 
                     if (keys.length > 0) {
                         const keyChars = [];
@@ -536,50 +589,55 @@
                         }
 
                         if (keyChars.length > 0) {
+                            const prefix = loopMode === 'loop' ? '    ' : '';
                             if (keyChars.length === 1) {
-                                scriptLines.push(`    Send, ${keyChars[0]}`);
-                                scriptLines.push(`    Sleep, 50`);
+                                scriptLines.push(`${prefix}Send, ${keyChars[0]}`);
+                                scriptLines.push(`${prefix}Sleep, 50`);
                             } else {
                                 // Multiple keys - send them one by one
                                 for (const keyChar of keyChars) {
-                                    scriptLines.push(`    Send, ${keyChar}`);
-                                    scriptLines.push(`    Sleep, 10`);
+                                    scriptLines.push(`${prefix}Send, ${keyChar}`);
+                                    scriptLines.push(`${prefix}Sleep, 10`);
                                 }
-                                scriptLines.push(`    Sleep, 40`);
+                                scriptLines.push(`${prefix}Sleep, 40`);
                             }
                         }
                     }
 
                     // Wait for next beat
-                    scriptLines.push(`    Sleep, ${beatDelay}`);
+                    const prefix = loopMode === 'loop' ? '    ' : '';
+                    scriptLines.push(`${prefix}Sleep, ${beatDelay}`);
                 }
 
-                // Close the loop and add other hotkeys
-                scriptLines.push(
-                    `}`,
-                    `playing := false`,
-                    `ToolTip, Finished`,
-                    `SetTimer, RemoveToolTip, -2000`,
-                    `return`,
-                    ``,
-                    `F2::`,
-                    `paused := !paused`,
-                    `ToolTip % paused ? "Paused" : "Resumed"`,
-                    `SetTimer, RemoveToolTip, -1000`,
-                    `return`,
-                    ``,
-                    `F3::`,
-                    `toggle := false`,
-                    `paused := false`,
-                    `playing := false`,
-                    `ToolTip, Stopped`,
-                    `SetTimer, RemoveToolTip, -1000`,
-                    `return`,
-                    ``,
-                    `RemoveToolTip:`,
-                    `ToolTip`,
-                    `return`
-                );
+                // Close loop for loop mode
+                if (loopMode === 'loop') {
+                    scriptLines.push(`}`);
+                }
+
+                // Add end script label and other hotkeys
+                scriptLines.push(`EndScript:`);
+                scriptLines.push(`playing := false`);
+                scriptLines.push(`ToolTip, Finished`);
+                scriptLines.push(`SetTimer, RemoveToolTip, -2000`);
+                scriptLines.push(`return`);
+                scriptLines.push(``);
+                scriptLines.push(`F2::`);
+                scriptLines.push(`paused := !paused`);
+                scriptLines.push(`ToolTip % paused ? "Paused" : "Resumed"`);
+                scriptLines.push(`SetTimer, RemoveToolTip, -1000`);
+                scriptLines.push(`return`);
+                scriptLines.push(``);
+                scriptLines.push(`F3::`);
+                scriptLines.push(`toggle := false`);
+                scriptLines.push(`paused := false`);
+                scriptLines.push(`playing := false`);
+                scriptLines.push(`ToolTip, Stopped`);
+                scriptLines.push(`SetTimer, RemoveToolTip, -1000`);
+                scriptLines.push(`return`);
+                scriptLines.push(``);
+                scriptLines.push(`RemoveToolTip:`);
+                scriptLines.push(`ToolTip`);
+                scriptLines.push(`return`);
 
                 this.ahkScript = scriptLines.join('\n');
 

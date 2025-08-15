@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>15鍵鋼琴譜面編輯器</title>
+    <div id="navbar"></div>
+
+
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .info {
+            background: linear-gradient(45deg, #e3f2fd, #bbdefb);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border-left: 5px solid #2196F3;
+        }
+        
+        .song-info {
+            background: linear-gradient(45deg, #f3e5f5, #e1bee7);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .beats-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .beat-card {
+            border: 2px solid #ddd;
+            border-radius: 15px;
+            padding: 15px;
+            margin: 10px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            display: inline-block;
+            vertical-align: top;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .beat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        
+        .beat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .beat-number {
+            font-weight: bold;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .delete-beat {
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .piano-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            max-width: 250px;
+        }
+        
+        .piano-key {
+            width: 35px;
+            height: 35px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            background: white;
+        }
+        
+        .piano-key:hover {
+            border-color: #999;
+            transform: scale(1.05);
+        }
+        
+        .piano-key.active {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border-color: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        
+        .key-labels {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            max-width: 250px;
+            margin-top: 10px;
+        }
+        
+        .key-label {
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            padding: 2px;
+        }
+        
+        input[type="text"], input[type="number"] {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        
+        input[type="text"]:focus, input[type="number"]:focus {
+            border-color: #4CAF50;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-input-label {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+            display: inline-block;
+        }
+        
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .json-output {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification.success {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+        
+        .notification.error {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎹 15鍵鋼琴譜面編輯器</h1>
+        
+        <div class="info">
+            <strong>使用說明：</strong><br>
+            • 點擊鋼琴鍵來選擇要按的按鍵（可多選）<br>
+            • 每張卡片代表一個拍子<br>
+            • 鍵位對應：1-5→YUIOP, 6-10→HJKL;, 11-15→NM,./
+        </div>
+        
+        <div class="song-info">
+            <div>
+                <label>歌曲名稱：</label>
+                <input type="text" id="songTitle" placeholder="歌曲名稱" value="我的樂曲">
+            </div>
+            <div>
+                <label>BPM：</label>
+                <input type="number" id="bpm" placeholder="BPM" value="120" min="60" max="200">
+            </div>
+            <div>
+                <strong>總拍數：</strong><span id="beatCount">0</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn-primary" onclick="addBeat()">➕ 新增拍子</button>
+            <button class="btn-secondary" onclick="generateJSON()">📋 生成JSON</button>
+            <div class="file-input-wrapper">
+                <input type="file" id="loadFile" accept=".json" onchange="loadJSON(event)">
+                <label for="loadFile" class="file-input-label">📁 載入JSON</label>
+            </div>
+            <button class="btn-secondary" onclick="downloadJSON()">💾 下載JSON</button>
+            <button class="btn-danger" onclick="clearAll()">🗑️ 清空全部</button>
+        </div>
+        
+        <div class="beats-container" id="beatsContainer">
+            <!-- 拍子卡片會在這裡生成 -->
+        </div>
+        
+        <div class="json-output" id="jsonOutput">
+            JSON輸出會顯示在這裡...
+        </div>
+    </div>
+
+    <script>
+
+        fetch('navbar.html')
+            .then(res => res.text())
+            .then(html => document.getElementById('navbar').innerHTML = html);
+
+        let beats = [];
+        let beatCounter = 0;
+        
+        // 按鍵對應
+        const keyMap = ['Y', 'U', 'I', 'O', 'P', 'H', 'J', 'K', 'L', ';', 'N', 'M', ',', '.', '/'];
+        
+        function showNotification(message, type = 'success') {
+            // 移除現有通知
+            const existing = document.querySelector('.notification');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // 顯示動畫
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            // 3秒後自動消失
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        function updateBeatCount() {
+            document.getElementById('beatCount').textContent = beats.length;
+        }
+        
+        function addBeat() {
+            beatCounter++;
+            const beat = {
+                id: beatCounter,
+                keys: []
+            };
+            beats.push(beat);
+            renderBeats();
+            updateBeatCount();
+        }
+        
+        function deleteBeat(id) {
+            beats = beats.filter(beat => beat.id !== id);
+            renderBeats();
+            updateBeatCount();
+        }
+        
+        function toggleKey(beatId, keyIndex) {
+            const beat = beats.find(b => b.id === beatId);
+            if (beat) {
+                const keyPos = beat.keys.indexOf(keyIndex);
+                if (keyPos > -1) {
+                    beat.keys.splice(keyPos, 1);
+                } else {
+                    beat.keys.push(keyIndex);
+                }
+                beat.keys.sort((a, b) => a - b);
+                renderBeats();
+            }
+        }
+        
+        function renderBeats() {
+            const container = document.getElementById('beatsContainer');
+            container.innerHTML = '';
+            
+            if (beats.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">尚未新增任何拍子，點擊「新增拍子」開始創作！</div>';
+                return;
+            }
+            
+            beats.forEach(beat => {
+                const beatDiv = document.createElement('div');
+                beatDiv.className = 'beat-card';
+                
+                const activeKeys = beat.keys.map(k => keyMap[k-1]).join(', ') || '休止符';
+                
+                beatDiv.innerHTML = `
+                    <div class="beat-header">
+                        <span class="beat-number">拍子 ${beats.indexOf(beat) + 1}</span>
+                        <button class="delete-beat" onclick="deleteBeat(${beat.id})" title="刪除這個拍子">×</button>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px; font-size: 12px; color: #666;">
+                        按鍵: ${activeKeys}
+                    </div>
+                    
+                    <div class="piano-grid">
+                        ${Array.from({length: 15}, (_, i) => `
+                            <div class="piano-key ${beat.keys.includes(i + 1) ? 'active' : ''}" 
+                                 onclick="toggleKey(${beat.id}, ${i + 1})"
+                                 title="按鍵 ${i + 1} (${keyMap[i]})">
+                                ${i + 1}
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="key-labels">
+                        ${keyMap.map(key => `<div class="key-label">${key}</div>`).join('')}
+                    </div>
+                `;
+                
+                container.appendChild(beatDiv);
+            });
+        }
+        
+        function generateJSON() {
+            const songData = {
+                title: document.getElementById('songTitle').value || "未命名樂曲",
+                bpm: parseInt(document.getElementById('bpm').value) || 120,
+                keyMapping: {
+                    "1-5": "YUIOP",
+                    "6-10": "HJKL;",
+                    "11-15": "NM,./"
+                },
+                beats: beats.map((beat, index) => ({
+                    beat: index + 1,
+                    keys: beat.keys,
+                    duration: 1.0
+                }))
+            };
+            
+            const jsonString = JSON.stringify(songData, null, 2);
+            document.getElementById('jsonOutput').textContent = jsonString;
+            return songData;
+        }
+        
+        function downloadJSON() {
+            if (beats.length === 0) {
+                showNotification('請先新增一些拍子！', 'error');
+                return;
+            }
+            
+            const data = generateJSON();
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${data.title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification(`已下載：${data.title}.json`);
+        }
+        
+        function loadJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // 驗證 JSON 格式
+                    if (!data.title || !data.bpm || !data.beats) {
+                        throw new Error('JSON 格式不完整，缺少必要欄位');
+                    }
+                    
+                    if (!Array.isArray(data.beats)) {
+                        throw new Error('beats 必須是陣列格式');
+                    }
+                    
+                    // 載入資料
+                    document.getElementById('songTitle').value = data.title || '';
+                    document.getElementById('bpm').value = data.bpm || 120;
+                    
+                    beats = [];
+                    beatCounter = 0;
+                    
+                    data.beats.forEach(beatData => {
+                        beatCounter++;
+                        beats.push({
+                            id: beatCounter,
+                            keys: Array.isArray(beatData.keys) ? beatData.keys : []
+                        });
+                    });
+                    
+                    renderBeats();
+                    updateBeatCount();
+                    generateJSON();
+                    
+                    showNotification(`成功載入：${data.title} (${beats.length} 拍)`);
+                    
+                } catch (error) {
+                    console.error('載入錯誤:', error);
+                    showNotification(`載入失敗：${error.message}`, 'error');
+                }
+            };
+            
+            reader.onerror = function() {
+                showNotification('檔案讀取失敗！', 'error');
+            };
+            
+            reader.readAsText(file, 'utf-8');
+            
+            // 清除 input 值，讓同一個檔案可以重複載入
+            event.target.value = '';
+        }
+        
+        function clearAll() {
+            if (beats.length === 0) {
+                showNotification('沒有內容需要清空', 'error');
+                return;
+            }
+            
+            if (confirm('確定要清空所有拍子嗎？此操作無法復原！')) {
+                beats = [];
+                beatCounter = 0;
+                renderBeats();
+                updateBeatCount();
+                document.getElementById('jsonOutput').textContent = 'JSON輸出會顯示在這裡...';
+                showNotification('已清空所有內容');
+            }
+        }
+        
+        function duplicateLastBeat() {
+            if (beats.length === 0) {
+                showNotification('請先新增一個拍子！', 'error');
+                return;
+            }
+            
+            const lastBeat = beats[beats.length - 1];
+            beatCounter++;
+            const newBeat = {
+                id: beatCounter,
+                keys: [...lastBeat.keys]  // 複製按鍵
+            };
+            beats.push(newBeat);
+            renderBeats();
+            updateBeatCount();
+            showNotification('已複製上一拍');
+        }
+        
+        // 添加複製功能到控制區域
+        function addDuplicateButton() {
+            const controls = document.querySelector('.controls');
+            const duplicateBtn = document.createElement('button');
+            duplicateBtn.className = 'btn-warning';
+            duplicateBtn.innerHTML = '📄 複製上一拍';
+            duplicateBtn.onclick = duplicateLastBeat;
+            
+            // 在新增拍子按鈕後面插入
+            const addBtn = controls.querySelector('button');
+            addBtn.insertAdjacentElement('afterend', duplicateBtn);
+        }
+        
+        // 鍵盤快捷鍵
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+N: 新增拍子
+            if (e.ctrlKey && e.key === 'n') {
+                e.preventDefault();
+                addBeat();
+            }
+            // Ctrl+S: 下載JSON
+            else if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                downloadJSON();
+            }
+            // Ctrl+O: 載入檔案
+            else if (e.ctrlKey && e.key === 'o') {
+                e.preventDefault();
+                document.getElementById('loadFile').click();
+            }
+        });
+        
+        // 初始化
+        function initialize() {
+            addDuplicateButton();
+            addBeat();  // 初始添加一個空拍子
+            updateBeatCount();
+            
+            // 顯示快捷鍵提示
+            setTimeout(() => {
+                showNotification('快捷鍵：Ctrl+N 新增拍子, Ctrl+S 下載, Ctrl+O 載入');
+            }, 1000);
+        }
+        
+        // 頁面載入完成後初始化
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>

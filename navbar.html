@@ -1,0 +1,47 @@
+<!-- navbar.html -->
+<style>
+.navbar {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    padding: 10px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.nav-container {
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.nav-logo {
+    color: white;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 18px;
+}
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 15px;
+    margin: 0;
+    padding: 0;
+}
+.nav-links li a {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.3s ease;
+}
+.nav-links li a:hover {
+    opacity: 0.8;
+}
+</style>
+
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="index.html" class="nav-logo">JSON ➜ AHK</a>
+        <ul class="nav-links">
+            <li><a href="piano_editor.html">鋼琴譜面編輯器</a></li>
+            <li><a href="index.html">AHK 轉換工具</a></li>
+        </ul>
+    </div>
+</nav>
