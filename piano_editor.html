@@ -73,6 +73,10 @@
             background: rgba(76, 175, 80, 0.9);
         }
         
+        .auto-save-status.error {
+            background: rgba(244, 67, 54, 0.9);
+        }
+        
         button {
             padding: 12px 24px;
             border: none;
@@ -331,6 +335,38 @@
             gap: 10px;
             flex-wrap: wrap;
         }
+
+        .storage-info {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        .storage-support {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .support-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .support-indicator.supported {
+            background-color: #4CAF50;
+        }
+
+        .support-indicator.not-supported {
+            background-color: #f44336;
+        }
     </style>
 </head>
 <body>
@@ -344,7 +380,7 @@
             • 點擊鋼琴鍵來選擇要按的按鍵（可多選）<br>
             • 每張卡片代表一個拍子<br>
             • 鍵位對應：1-5→YUIOP, 6-10→HJKL;, 11-15→NM,./<br>
-            • <strong>新功能：</strong>批量新增拍子、自動暫存功能
+            • <strong>新功能：</strong>批量新增拍子、真正的瀏覽器暫存功能 (localStorage)
         </div>
         
         <div class="song-info">
@@ -369,12 +405,20 @@
         </div>
         
         <div class="storage-controls">
-            <h3>💾 暫存功能</h3>
+            <h3>💾 瀏覽器暫存功能</h3>
+            <div class="storage-support">
+                <span class="support-indicator" id="supportIndicator"></span>
+                <span id="supportText">檢查中...</span>
+            </div>
             <div class="storage-buttons">
                 <button class="btn-secondary" onclick="saveToStorage()">💾 手動儲存</button>
                 <button class="btn-secondary" onclick="loadFromStorage()">📂 載入暫存</button>
                 <button class="btn-danger" onclick="clearStorage()">🗑️ 清除暫存</button>
                 <span id="storageStatus" style="margin-left: 15px; color: #666; font-size: 14px;">暫存狀態: 無資料</span>
+            </div>
+            <div class="storage-info" id="storageInfo" style="display: none;">
+                <strong>📱 localStorage 支援狀態：</strong><br>
+                <span id="storageDetails">正在檢測...</span>
             </div>
         </div>
         
@@ -417,9 +461,41 @@
         // 按鍵對應
         const keyMap = ['Y', 'U', 'I', 'O', 'P', 'H', 'J', 'K', 'L', ';', 'N', 'M', ',', '.', '/'];
         
-        // 自動暫存設定
-        const AUTO_SAVE_KEY = 'pianoEditor_autosave';
+        // localStorage 設定
+        const STORAGE_KEY = 'pianoEditor_data';
         const AUTO_SAVE_DELAY = 2000; // 2秒後自動儲存
+        
+        // 檢查 localStorage 支援
+        function checkLocalStorageSupport() {
+            try {
+                const test = 'localStorage_test';
+                localStorage.setItem(test, test);
+                localStorage.removeItem(test);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function updateStorageSupport() {
+            const isSupported = checkLocalStorageSupport();
+            const indicator = document.getElementById('supportIndicator');
+            const supportText = document.getElementById('supportText');
+            const storageInfo = document.getElementById('storageInfo');
+            const storageDetails = document.getElementById('storageDetails');
+
+            if (isSupported) {
+                indicator.className = 'support-indicator supported';
+                supportText.textContent = '✅ localStorage 已支援 - 重新整理頁面後資料會保留';
+                storageDetails.textContent = '您的瀏覽器支援 localStorage，即使關閉分頁或重新整理頁面，暫存的資料都會保留。這在 GitHub Pages 上完全可用！';
+                storageInfo.style.display = 'block';
+            } else {
+                indicator.className = 'support-indicator not-supported';
+                supportText.textContent = '❌ localStorage 不支援 - 資料無法持久保存';
+                storageDetails.textContent = '您的瀏覽器不支援 localStorage 或被禁用。暫存功能將使用記憶體模擬，重新整理頁面後資料會消失。';
+                storageInfo.style.display = 'block';
+            }
+        }
         
         function showNotification(message, type = 'success') {
             // 移除現有通知
@@ -459,6 +535,13 @@
                     setTimeout(() => {
                         statusEl.style.display = 'none';
                     }, 2000);
+                    break;
+                case 'error':
+                    statusEl.className += ' error';
+                    statusEl.textContent = '儲存失敗';
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 3000);
                     break;
             }
         }
@@ -706,66 +789,122 @@
             triggerAutoSave();
         }
         
-        // 暫存功能
+        // 真正的暫存功能 (localStorage)
         function saveToStorage() {
-            const data = {
-                title: document.getElementById('songTitle').value,
-                bpm: document.getElementById('bpm').value,
-                beats: beats,
-                beatCounter: beatCounter,
-                timestamp: new Date().toLocaleString()
-            };
-            
-            // 使用記憶體變數模擬儲存（因為不能使用 localStorage）
-            window.pianoEditorStorage = data;
-            
-            updateStorageStatus();
-            showNotification('已儲存到暫存！');
+            try {
+                const data = {
+                    title: document.getElementById('songTitle').value,
+                    bpm: document.getElementById('bpm').value,
+                    beats: beats,
+                    beatCounter: beatCounter,
+                    timestamp: new Date().toLocaleString()
+                };
+
+                if (checkLocalStorageSupport()) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                    updateStorageStatus();
+                    showNotification('已儲存到瀏覽器暫存！');
+                } else {
+                    // 降級到記憶體變數
+                    window.pianoEditorStorage = data;
+                    updateStorageStatus();
+                    showNotification('已暫存到記憶體（重新整理後會消失）', 'error');
+                }
+            } catch (error) {
+                console.error('儲存失敗:', error);
+                showNotification('儲存失敗！', 'error');
+                showAutoSaveStatus('error');
+            }
         }
         
         function loadFromStorage() {
-            // 從記憶體變數載入（模擬 localStorage）
-            const data = window.pianoEditorStorage;
-            
-            if (!data) {
-                showNotification('沒有找到暫存資料！', 'error');
-                return;
+            try {
+                let data = null;
+
+                if (checkLocalStorageSupport()) {
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    if (stored) {
+                        data = JSON.parse(stored);
+                    }
+                } else {
+                    // 降級到記憶體變數
+                    data = window.pianoEditorStorage;
+                }
+                
+                if (!data) {
+                    showNotification('沒有找到暫存資料！', 'error');
+                    return;
+                }
+                
+                if (beats.length > 0 && !confirm('載入暫存資料會覆蓋目前的內容，確定要繼續嗎？')) {
+                    return;
+                }
+                
+                document.getElementById('songTitle').value = data.title || '';
+                document.getElementById('bpm').value = data.bpm || 120;
+                beats = data.beats || [];
+                beatCounter = data.beatCounter || 0;
+                
+                renderBeats();
+                updateBeatCount();
+                generateJSON();
+                
+                showNotification(`已載入暫存資料 (${data.timestamp})`);
+                
+            } catch (error) {
+                console.error('載入失敗:', error);
+                showNotification('載入暫存資料失敗！', 'error');
             }
-            
-            if (beats.length > 0 && !confirm('載入暫存資料會覆蓋目前的內容，確定要繼續嗎？')) {
-                return;
-            }
-            
-            document.getElementById('songTitle').value = data.title || '';
-            document.getElementById('bpm').value = data.bpm || 120;
-            beats = data.beats || [];
-            beatCounter = data.beatCounter || 0;
-            
-            renderBeats();
-            updateBeatCount();
-            generateJSON();
-            
-            showNotification(`已載入暫存資料 (${data.timestamp})`);
         }
         
         function clearStorage() {
-            if (!window.pianoEditorStorage) {
-                showNotification('沒有暫存資料需要清除', 'error');
-                return;
-            }
-            
-            if (confirm('確定要清除暫存資料嗎？')) {
-                delete window.pianoEditorStorage;
-                updateStorageStatus();
-                showNotification('已清除暫存資料');
+            try {
+                let hasData = false;
+
+                if (checkLocalStorageSupport()) {
+                    hasData = localStorage.getItem(STORAGE_KEY) !== null;
+                    if (hasData && confirm('確定要清除暫存資料嗎？')) {
+                        localStorage.removeItem(STORAGE_KEY);
+                        updateStorageStatus();
+                        showNotification('已清除暫存資料');
+                    }
+                } else {
+                    hasData = window.pianoEditorStorage !== undefined;
+                    if (hasData && confirm('確定要清除暫存資料嗎？')) {
+                        delete window.pianoEditorStorage;
+                        updateStorageStatus();
+                        showNotification('已清除暫存資料');
+                    }
+                }
+
+                if (!hasData) {
+                    showNotification('沒有暫存資料需要清除', 'error');
+                }
+                
+            } catch (error) {
+                console.error('清除失敗:', error);
+                showNotification('清除暫存資料失敗！', 'error');
             }
         }
         
         function updateStorageStatus() {
             const statusEl = document.getElementById('storageStatus');
-            const data = window.pianoEditorStorage;
+            let data = null;
+
+            try {
+                if (checkLocalStorageSupport()) {
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    if (stored) {
+                        data = JSON.parse(stored);
+                    }
+                } else {
+                    data = window.pianoEditorStorage;
+                }
+            } catch (error) {
+                console.error('讀取暫存狀態失敗:', error);
+            }
             
-            if (data) {
+            if (data && data.timestamp) {
                 statusEl.textContent = `暫存狀態: 已儲存 (${data.timestamp})`;
                 statusEl.style.color = '#4CAF50';
             } else {
@@ -786,8 +925,13 @@
             
             // 設定新的計時器
             autoSaveTimeout = setTimeout(() => {
-                saveToStorage();
-                showAutoSaveStatus('saved');
+                try {
+                    saveToStorage();
+                    showAutoSaveStatus('saved');
+                } catch (error) {
+                    console.error('自動儲存失敗:', error);
+                    showAutoSaveStatus('error');
+                }
             }, AUTO_SAVE_DELAY);
         }
         
@@ -819,15 +963,42 @@
                 e.preventDefault();
                 saveToStorage();
             }
+            // Ctrl+L: 載入暫存
+            else if (e.ctrlKey && e.key === 'l') {
+                e.preventDefault();
+                loadFromStorage();
+            }
         });
         
         // 初始化
         function initialize() {
-            // 初始化時載入暫存資料（如果有的話）
-            if (window.pianoEditorStorage) {
-                loadFromStorage();
-            } else {
-                addBeat();  // 初始添加一個空拍子
+            // 更新 localStorage 支援狀態
+            updateStorageSupport();
+            
+            // 嘗試載入暫存資料
+            try {
+                let hasStoredData = false;
+                
+                if (checkLocalStorageSupport()) {
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    hasStoredData = stored !== null;
+                } else {
+                    hasStoredData = window.pianoEditorStorage !== undefined;
+                }
+
+                if (hasStoredData) {
+                    // 詢問是否載入暫存資料
+                    if (confirm('發現暫存資料，是否要載入？')) {
+                        loadFromStorage();
+                    } else {
+                        addBeat();  // 新增一個空拍子開始
+                    }
+                } else {
+                    addBeat();  // 初始添加一個空拍子
+                }
+            } catch (error) {
+                console.error('初始化載入失敗:', error);
+                addBeat();  // 發生錯誤時還是新增一個空拍子
             }
             
             updateBeatCount();
@@ -836,8 +1007,9 @@
             
             // 顯示快捷鍵提示
             setTimeout(() => {
-                showNotification('快捷鍵：Ctrl+N 新增拍子, Ctrl+S 下載, Ctrl+O 載入, Ctrl+Shift+S 儲存暫存');
-            }, 1000);
+                const storageType = checkLocalStorageSupport() ? '永久暫存' : '臨時暫存';
+                showNotification(`✨ 快捷鍵: Ctrl+N 新增, Ctrl+S 下載, Ctrl+O 載入, Ctrl+Shift+S ${storageType}, Ctrl+L 載入暫存`);
+            }, 1500);
         }
         
         // 頁面載入完成後初始化
@@ -846,9 +1018,52 @@
         // 頁面關閉前自動儲存
         window.addEventListener('beforeunload', function() {
             if (beats.length > 0) {
-                saveToStorage();
+                try {
+                    // 同步儲存，確保在頁面關閉前完成
+                    const data = {
+                        title: document.getElementById('songTitle').value,
+                        bpm: document.getElementById('bpm').value,
+                        beats: beats,
+                        beatCounter: beatCounter,
+                        timestamp: new Date().toLocaleString()
+                    };
+
+                    if (checkLocalStorageSupport()) {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                    } else {
+                        window.pianoEditorStorage = data;
+                    }
+                } catch (error) {
+                    console.error('關閉前儲存失敗:', error);
+                }
             }
         });
+
+        // 檢測 localStorage 空間使用情況（可選功能）
+        function getStorageSize() {
+            if (!checkLocalStorageSupport()) return 0;
+            
+            try {
+                let total = 0;
+                for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        total += localStorage[key].length + key.length;
+                    }
+                }
+                return total;
+            } catch (error) {
+                return 0;
+            }
+        }
+
+        // 顯示儲存空間資訊（開發用）
+        function showStorageInfo() {
+            if (checkLocalStorageSupport()) {
+                const size = getStorageSize();
+                const sizeKB = (size / 1024).toFixed(2);
+                console.log(`localStorage 使用空間: ${sizeKB} KB`);
+            }
+        }
     </script>
 </body>
 </html>
