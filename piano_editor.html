@@ -6,7 +6,6 @@
     <title>15鍵鋼琴譜面編輯器</title>
     <div id="navbar"></div>
 
-
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -41,6 +40,39 @@
             justify-content: center;
         }
         
+        .batch-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: rgba(76, 175, 80, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #4CAF50;
+        }
+        
+        .auto-save-status {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(33, 150, 243, 0.9);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .auto-save-status.saving {
+            background: rgba(255, 152, 0, 0.9);
+        }
+        
+        .auto-save-status.saved {
+            background: rgba(76, 175, 80, 0.9);
+        }
+        
         button {
             padding: 12px 24px;
             border: none;
@@ -68,6 +100,11 @@
         
         .btn-warning {
             background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #4CAF50, #388e3c);
             color: white;
         }
         
@@ -274,9 +311,31 @@
         .notification.show {
             transform: translateX(0);
         }
+        
+        .storage-controls {
+            background: rgba(33, 150, 243, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #2196F3;
+        }
+        
+        .storage-controls h3 {
+            margin: 0 0 15px 0;
+            color: #1976D2;
+            font-size: 18px;
+        }
+        
+        .storage-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
     </style>
 </head>
 <body>
+    <div class="auto-save-status" id="autoSaveStatus">自動儲存中...</div>
+    
     <div class="container">
         <h1>🎹 15鍵鋼琴譜面編輯器</h1>
         
@@ -284,7 +343,8 @@
             <strong>使用說明：</strong><br>
             • 點擊鋼琴鍵來選擇要按的按鍵（可多選）<br>
             • 每張卡片代表一個拍子<br>
-            • 鍵位對應：1-5→YUIOP, 6-10→HJKL;, 11-15→NM,./
+            • 鍵位對應：1-5→YUIOP, 6-10→HJKL;, 11-15→NM,./<br>
+            • <strong>新功能：</strong>批量新增拍子、自動暫存功能
         </div>
         
         <div class="song-info">
@@ -301,8 +361,26 @@
             </div>
         </div>
         
+        <div class="batch-controls">
+            <span style="font-weight: bold; color: #388e3c;">📊 批量新增：</span>
+            <label>數量：</label>
+            <input type="number" id="batchCount" value="4" min="1" max="50" style="width: 80px;">
+            <button class="btn-success" onclick="addMultipleBeats()">➕ 批量新增拍子</button>
+        </div>
+        
+        <div class="storage-controls">
+            <h3>💾 暫存功能</h3>
+            <div class="storage-buttons">
+                <button class="btn-secondary" onclick="saveToStorage()">💾 手動儲存</button>
+                <button class="btn-secondary" onclick="loadFromStorage()">📂 載入暫存</button>
+                <button class="btn-danger" onclick="clearStorage()">🗑️ 清除暫存</button>
+                <span id="storageStatus" style="margin-left: 15px; color: #666; font-size: 14px;">暫存狀態: 無資料</span>
+            </div>
+        </div>
+        
         <div class="controls">
             <button class="btn-primary" onclick="addBeat()">➕ 新增拍子</button>
+            <button class="btn-warning" onclick="duplicateLastBeat()">🔄 複製上一拍</button>
             <button class="btn-secondary" onclick="generateJSON()">📋 生成JSON</button>
             <div class="file-input-wrapper">
                 <input type="file" id="loadFile" accept=".json" onchange="loadJSON(event)">
@@ -322,16 +400,26 @@
     </div>
 
     <script>
-
-        fetch('navbar.html')
-            .then(res => res.text())
-            .then(html => document.getElementById('navbar').innerHTML = html);
+        // 嘗試載入 navbar（如果存在的話）
+        try {
+            fetch('navbar.html')
+                .then(res => res.text())
+                .then(html => document.getElementById('navbar').innerHTML = html)
+                .catch(err => console.log('navbar.html not found'));
+        } catch (e) {
+            console.log('navbar.html not available');
+        }
 
         let beats = [];
         let beatCounter = 0;
+        let autoSaveTimeout;
         
         // 按鍵對應
         const keyMap = ['Y', 'U', 'I', 'O', 'P', 'H', 'J', 'K', 'L', ';', 'N', 'M', ',', '.', '/'];
+        
+        // 自動暫存設定
+        const AUTO_SAVE_KEY = 'pianoEditor_autosave';
+        const AUTO_SAVE_DELAY = 2000; // 2秒後自動儲存
         
         function showNotification(message, type = 'success') {
             // 移除現有通知
@@ -355,6 +443,26 @@
             }, 3000);
         }
         
+        function showAutoSaveStatus(status) {
+            const statusEl = document.getElementById('autoSaveStatus');
+            statusEl.className = 'auto-save-status';
+            statusEl.style.display = 'block';
+            
+            switch(status) {
+                case 'saving':
+                    statusEl.className += ' saving';
+                    statusEl.textContent = '正在儲存...';
+                    break;
+                case 'saved':
+                    statusEl.className += ' saved';
+                    statusEl.textContent = '已自動儲存';
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 2000);
+                    break;
+            }
+        }
+        
         function updateBeatCount() {
             document.getElementById('beatCount').textContent = beats.length;
         }
@@ -368,12 +476,38 @@
             beats.push(beat);
             renderBeats();
             updateBeatCount();
+            triggerAutoSave();
+        }
+        
+        // 新功能：批量新增拍子
+        function addMultipleBeats() {
+            const count = parseInt(document.getElementById('batchCount').value);
+            
+            if (!count || count < 1 || count > 50) {
+                showNotification('請輸入1-50之間的數量！', 'error');
+                return;
+            }
+            
+            for (let i = 0; i < count; i++) {
+                beatCounter++;
+                const beat = {
+                    id: beatCounter,
+                    keys: []
+                };
+                beats.push(beat);
+            }
+            
+            renderBeats();
+            updateBeatCount();
+            triggerAutoSave();
+            showNotification(`已成功新增 ${count} 個拍子！`);
         }
         
         function deleteBeat(id) {
             beats = beats.filter(beat => beat.id !== id);
             renderBeats();
             updateBeatCount();
+            triggerAutoSave();
         }
         
         function toggleKey(beatId, keyIndex) {
@@ -387,6 +521,7 @@
                 }
                 beat.keys.sort((a, b) => a - b);
                 renderBeats();
+                triggerAutoSave();
             }
         }
         
@@ -494,23 +629,7 @@
                     }
                     
                     // 載入資料
-                    document.getElementById('songTitle').value = data.title || '';
-                    document.getElementById('bpm').value = data.bpm || 120;
-                    
-                    beats = [];
-                    beatCounter = 0;
-                    
-                    data.beats.forEach(beatData => {
-                        beatCounter++;
-                        beats.push({
-                            id: beatCounter,
-                            keys: Array.isArray(beatData.keys) ? beatData.keys : []
-                        });
-                    });
-                    
-                    renderBeats();
-                    updateBeatCount();
-                    generateJSON();
+                    loadDataFromObject(data);
                     
                     showNotification(`成功載入：${data.title} (${beats.length} 拍)`);
                     
@@ -530,6 +649,27 @@
             event.target.value = '';
         }
         
+        function loadDataFromObject(data) {
+            document.getElementById('songTitle').value = data.title || '';
+            document.getElementById('bpm').value = data.bpm || 120;
+            
+            beats = [];
+            beatCounter = 0;
+            
+            data.beats.forEach(beatData => {
+                beatCounter++;
+                beats.push({
+                    id: beatCounter,
+                    keys: Array.isArray(beatData.keys) ? beatData.keys : []
+                });
+            });
+            
+            renderBeats();
+            updateBeatCount();
+            generateJSON();
+            triggerAutoSave();
+        }
+        
         function clearAll() {
             if (beats.length === 0) {
                 showNotification('沒有內容需要清空', 'error');
@@ -543,6 +683,7 @@
                 updateBeatCount();
                 document.getElementById('jsonOutput').textContent = 'JSON輸出會顯示在這裡...';
                 showNotification('已清空所有內容');
+                triggerAutoSave();
             }
         }
         
@@ -562,19 +703,98 @@
             renderBeats();
             updateBeatCount();
             showNotification('已複製上一拍');
+            triggerAutoSave();
         }
         
-        // 添加複製功能到控制區域
-        function addDuplicateButton() {
-            const controls = document.querySelector('.controls');
-            const duplicateBtn = document.createElement('button');
-            duplicateBtn.className = 'btn-warning';
-            duplicateBtn.innerHTML = '📄 複製上一拍';
-            duplicateBtn.onclick = duplicateLastBeat;
+        // 暫存功能
+        function saveToStorage() {
+            const data = {
+                title: document.getElementById('songTitle').value,
+                bpm: document.getElementById('bpm').value,
+                beats: beats,
+                beatCounter: beatCounter,
+                timestamp: new Date().toLocaleString()
+            };
             
-            // 在新增拍子按鈕後面插入
-            const addBtn = controls.querySelector('button');
-            addBtn.insertAdjacentElement('afterend', duplicateBtn);
+            // 使用記憶體變數模擬儲存（因為不能使用 localStorage）
+            window.pianoEditorStorage = data;
+            
+            updateStorageStatus();
+            showNotification('已儲存到暫存！');
+        }
+        
+        function loadFromStorage() {
+            // 從記憶體變數載入（模擬 localStorage）
+            const data = window.pianoEditorStorage;
+            
+            if (!data) {
+                showNotification('沒有找到暫存資料！', 'error');
+                return;
+            }
+            
+            if (beats.length > 0 && !confirm('載入暫存資料會覆蓋目前的內容，確定要繼續嗎？')) {
+                return;
+            }
+            
+            document.getElementById('songTitle').value = data.title || '';
+            document.getElementById('bpm').value = data.bpm || 120;
+            beats = data.beats || [];
+            beatCounter = data.beatCounter || 0;
+            
+            renderBeats();
+            updateBeatCount();
+            generateJSON();
+            
+            showNotification(`已載入暫存資料 (${data.timestamp})`);
+        }
+        
+        function clearStorage() {
+            if (!window.pianoEditorStorage) {
+                showNotification('沒有暫存資料需要清除', 'error');
+                return;
+            }
+            
+            if (confirm('確定要清除暫存資料嗎？')) {
+                delete window.pianoEditorStorage;
+                updateStorageStatus();
+                showNotification('已清除暫存資料');
+            }
+        }
+        
+        function updateStorageStatus() {
+            const statusEl = document.getElementById('storageStatus');
+            const data = window.pianoEditorStorage;
+            
+            if (data) {
+                statusEl.textContent = `暫存狀態: 已儲存 (${data.timestamp})`;
+                statusEl.style.color = '#4CAF50';
+            } else {
+                statusEl.textContent = '暫存狀態: 無資料';
+                statusEl.style.color = '#666';
+            }
+        }
+        
+        // 自動暫存功能
+        function triggerAutoSave() {
+            // 清除之前的計時器
+            if (autoSaveTimeout) {
+                clearTimeout(autoSaveTimeout);
+            }
+            
+            // 顯示正在儲存狀態
+            showAutoSaveStatus('saving');
+            
+            // 設定新的計時器
+            autoSaveTimeout = setTimeout(() => {
+                saveToStorage();
+                showAutoSaveStatus('saved');
+            }, AUTO_SAVE_DELAY);
+        }
+        
+        // 監聽輸入框變化
+        function setupAutoSaveListeners() {
+            document.getElementById('songTitle').addEventListener('input', triggerAutoSave);
+            document.getElementById('bpm').addEventListener('input', triggerAutoSave);
         }
         
         // 鍵盤快捷鍵
@@ -594,22 +814,41 @@
                 e.preventDefault();
                 document.getElementById('loadFile').click();
             }
+            // Ctrl+Shift+S: 手動儲存暫存
+            else if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+                e.preventDefault();
+                saveToStorage();
+            }
         });
         
         // 初始化
         function initialize() {
-            addDuplicateButton();
-            addBeat();  // 初始添加一個空拍子
+            // 初始化時載入暫存資料（如果有的話）
+            if (window.pianoEditorStorage) {
+                loadFromStorage();
+            } else {
+                addBeat();  // 初始添加一個空拍子
+            }
+            
             updateBeatCount();
+            updateStorageStatus();
+            setupAutoSaveListeners();
             
             // 顯示快捷鍵提示
             setTimeout(() => {
-                showNotification('快捷鍵：Ctrl+N 新增拍子, Ctrl+S 下載, Ctrl+O 載入');
+                showNotification('快捷鍵：Ctrl+N 新增拍子, Ctrl+S 下載, Ctrl+O 載入, Ctrl+Shift+S 儲存暫存');
             }, 1000);
         }
         
         // 頁面載入完成後初始化
         document.addEventListener('DOMContentLoaded', initialize);
+        
+        // 頁面關閉前自動儲存
+        window.addEventListener('beforeunload', function() {
+            if (beats.length > 0) {
+                saveToStorage();
+            }
+        });
     </script>
 </body>
 </html>
