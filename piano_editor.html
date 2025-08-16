@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>15鍵鋼琴譜面編輯器</title>
+    <title>15鍵鋼琴譜編輯器</title>
     <div id="navbar"></div>
 
     <style>
@@ -38,17 +38,6 @@
             margin-bottom: 30px;
             flex-wrap: wrap;
             justify-content: center;
-        }
-        
-        .batch-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            background: rgba(76, 175, 80, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 2px solid #4CAF50;
         }
         
         .auto-save-status {
@@ -142,6 +131,7 @@
             padding: 20px;
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            min-height: 400px;
         }
         
         .beat-card {
@@ -279,18 +269,6 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         
-        .json-output {
-            background: #f5f5f5;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-            font-family: 'Courier New', monospace;
-            white-space: pre-wrap;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
         .notification {
             position: fixed;
             top: 20px;
@@ -367,20 +345,183 @@
         .support-indicator.not-supported {
             background-color: #f44336;
         }
+
+        /* 浮動新增按鈕 */
+        .floating-add-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+            transition: all 0.3s ease;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .floating-add-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(76, 175, 80, 0.6);
+        }
+
+        /* JSON 彈出視窗 */
+        .json-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .json-modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            width: 100%;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .json-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .json-modal-header h2 {
+            margin: 0;
+            color: #333;
+            font-size: 1.5em;
+        }
+
+        .close-modal {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .json-content {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .json-modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* 滾動提示 */
+        .scroll-hint {
+            position: fixed;
+            bottom: 120px;
+            right: 30px;
+            background: rgba(33, 150, 243, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 998;
+            display: none;
+            animation: fadeInOut 3s ease-in-out;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            20%, 80% { opacity: 1; }
+        }
+
+        .scroll-zone {
+            height: 200px;
+            margin-top: 50px;
+            background: linear-gradient(to bottom, transparent, rgba(76, 175, 80, 0.1));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
     <div class="auto-save-status" id="autoSaveStatus">自動儲存中...</div>
     
+    <!-- 浮動新增按鈕 -->
+    <button class="floating-add-btn" onclick="addBeat()" title="新增拍子 (Ctrl+N)">
+        ➕
+    </button>
+
+    <!-- 滾動提示 -->
+    <div class="scroll-hint" id="scrollHint">
+        滾動到底部自動新增一整排拍子 ✨
+    </div>
+
+    <!-- JSON 彈出視窗 -->
+    <div class="json-modal" id="jsonModal">
+        <div class="json-modal-content">
+            <div class="json-modal-header">
+                <h2>🎼 生成的 JSON 樂譜</h2>
+                <button class="close-modal" onclick="closeJsonModal()">×</button>
+            </div>
+            <div class="json-content" id="modalJsonContent">
+                <!-- JSON 內容會在這裡顯示 -->
+            </div>
+            <div class="json-modal-buttons">
+                <button class="btn-secondary" onclick="copyJsonToClipboard()">📋 複製到剪貼簿</button>
+                <button class="btn-secondary" onclick="downloadJSON()">💾 下載 JSON</button>
+                <button class="btn-primary" onclick="closeJsonModal()">關閉</button>
+            </div>
+        </div>
+    </div>
+    
     <div class="container">
-        <h1>🎹 15鍵鋼琴譜面編輯器</h1>
+        <h1>🎹 15鍵鋼琴譜編輯器</h1>
         
         <div class="info">
             <strong>使用說明：</strong><br>
             • 點擊鋼琴鍵來選擇要按的按鍵（可多選）<br>
             • 每張卡片代表一個拍子<br>
             • 鍵位對應：1-5→YUIOP, 6-10→HJKL;, 11-15→NM,./<br>
-            • <strong>新功能：</strong>批量新增拍子、真正的瀏覽器暫存功能 (localStorage)
+            • <strong>新功能：</strong>滾動到底部自動新增一整排拍子，右下角有快速新增按鈕<br>
+            • <strong>彈出視窗：</strong>生成JSON時會顯示在彈出視窗中
         </div>
         
         <div class="song-info">
@@ -395,13 +536,6 @@
             <div>
                 <strong>總拍數：</strong><span id="beatCount">0</span>
             </div>
-        </div>
-        
-        <div class="batch-controls">
-            <span style="font-weight: bold; color: #388e3c;">📊 批量新增：</span>
-            <label>數量：</label>
-            <input type="number" id="batchCount" value="4" min="1" max="50" style="width: 80px;">
-            <button class="btn-success" onclick="addMultipleBeats()">➕ 批量新增拍子</button>
         </div>
         
         <div class="storage-controls">
@@ -423,23 +557,21 @@
         </div>
         
         <div class="controls">
-            <button class="btn-primary" onclick="addBeat()">➕ 新增拍子</button>
             <button class="btn-warning" onclick="duplicateLastBeat()">🔄 複製上一拍</button>
-            <button class="btn-secondary" onclick="generateJSON()">📋 生成JSON</button>
+            <button class="btn-secondary" onclick="generateJSONModal()">📋 生成JSON</button>
             <div class="file-input-wrapper">
                 <input type="file" id="loadFile" accept=".json" onchange="loadJSON(event)">
                 <label for="loadFile" class="file-input-label">📁 載入JSON</label>
             </div>
-            <button class="btn-secondary" onclick="downloadJSON()">💾 下載JSON</button>
             <button class="btn-danger" onclick="clearAll()">🗑️ 清空全部</button>
         </div>
         
         <div class="beats-container" id="beatsContainer">
             <!-- 拍子卡片會在這裡生成 -->
         </div>
-        
-        <div class="json-output" id="jsonOutput">
-            JSON輸出會顯示在這裡...
+
+        <div class="scroll-zone" id="scrollZone">
+            繼續往下滾動以自動新增一整排拍子...
         </div>
     </div>
 
@@ -457,6 +589,8 @@
         let beats = [];
         let beatCounter = 0;
         let autoSaveTimeout;
+        let isScrolling = false;
+        let scrollTimeout;
         
         // 按鍵對應
         const keyMap = ['Y', 'U', 'I', 'O', 'P', 'H', 'J', 'K', 'L', ';', 'N', 'M', ',', '.', '/'];
@@ -562,30 +696,6 @@
             triggerAutoSave();
         }
         
-        // 新功能：批量新增拍子
-        function addMultipleBeats() {
-            const count = parseInt(document.getElementById('batchCount').value);
-            
-            if (!count || count < 1 || count > 50) {
-                showNotification('請輸入1-50之間的數量！', 'error');
-                return;
-            }
-            
-            for (let i = 0; i < count; i++) {
-                beatCounter++;
-                const beat = {
-                    id: beatCounter,
-                    keys: []
-                };
-                beats.push(beat);
-            }
-            
-            renderBeats();
-            updateBeatCount();
-            triggerAutoSave();
-            showNotification(`已成功新增 ${count} 個拍子！`);
-        }
-        
         function deleteBeat(id) {
             beats = beats.filter(beat => beat.id !== id);
             renderBeats();
@@ -613,7 +723,7 @@
             container.innerHTML = '';
             
             if (beats.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">尚未新增任何拍子，點擊「新增拍子」開始創作！</div>';
+                container.innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">尚未新增任何拍子，點擊右下角的➕按鈕或滾動到底部開始創作！</div>';
                 return;
             }
             
@@ -668,18 +778,83 @@
                 }))
             };
             
-            const jsonString = JSON.stringify(songData, null, 2);
-            document.getElementById('jsonOutput').textContent = jsonString;
             return songData;
         }
-        
-        function downloadJSON() {
+
+        // 在彈出視窗中生成JSON
+        function generateJSONModal() {
             if (beats.length === 0) {
                 showNotification('請先新增一些拍子！', 'error');
                 return;
             }
-            
+
             const data = generateJSON();
+            const jsonString = JSON.stringify(data, null, 2);
+            
+            document.getElementById('modalJsonContent').textContent = jsonString;
+            document.getElementById('jsonModal').style.display = 'flex';
+            
+            // 儲存到全域變數供其他函數使用
+            window.currentJsonData = data;
+        }
+
+        // 關閉 JSON 彈出視窗
+        function closeJsonModal() {
+            document.getElementById('jsonModal').style.display = 'none';
+        }
+
+        // 複製JSON到剪貼簿
+        function copyJsonToClipboard() {
+            const jsonContent = document.getElementById('modalJsonContent').textContent;
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(jsonContent).then(() => {
+                    showNotification('✅ JSON 已複製到剪貼簿！');
+                }).catch(() => {
+                    fallbackCopyTextToClipboard(jsonContent);
+                });
+            } else {
+                fallbackCopyTextToClipboard(jsonContent);
+            }
+        }
+
+        // 備用複製方法
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showNotification('✅ JSON 已複製到剪貼簿！');
+                } else {
+                    showNotification('❌ 複製失敗，請手動複製', 'error');
+                }
+            } catch (err) {
+                console.error('複製失敗:', err);
+                showNotification('❌ 複製失敗，請手動複製', 'error');
+            }
+            
+            document.body.removeChild(textArea);
+        }
+        
+        function downloadJSON() {
+            let data = window.currentJsonData;
+            
+            if (!data) {
+                if (beats.length === 0) {
+                    showNotification('請先新增一些拍子！', 'error');
+                    return;
+                }
+                data = generateJSON();
+            }
+            
             const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -749,7 +924,6 @@
             
             renderBeats();
             updateBeatCount();
-            generateJSON();
             triggerAutoSave();
         }
         
@@ -764,7 +938,6 @@
                 beatCounter = 0;
                 renderBeats();
                 updateBeatCount();
-                document.getElementById('jsonOutput').textContent = 'JSON輸出會顯示在這裡...';
                 showNotification('已清空所有內容');
                 triggerAutoSave();
             }
@@ -847,7 +1020,6 @@
                 
                 renderBeats();
                 updateBeatCount();
-                generateJSON();
                 
                 showNotification(`已載入暫存資料 (${data.timestamp})`);
                 
@@ -940,13 +1112,123 @@
             document.getElementById('songTitle').addEventListener('input', triggerAutoSave);
             document.getElementById('bpm').addEventListener('input', triggerAutoSave);
         }
+
+        // 計算每行能放幾個拍子卡片
+        function calculateBeatsPerRow() {
+            const container = document.getElementById('beatsContainer');
+            const containerWidth = container.clientWidth;
+            
+            // 拍子卡片的寬度約為 280px（包含 margin）
+            const cardWidth = 280;
+            const beatsPerRow = Math.floor(containerWidth / cardWidth) || 1;
+            
+            return Math.max(beatsPerRow, 1); // 至少1個
+        }
+
+        // 新增一整排拍子
+        function addRowOfBeats() {
+            const beatsPerRow = calculateBeatsPerRow();
+            const oldBeatCount = beats.length;
+            
+            // 新增一整排拍子
+            for (let i = 0; i < beatsPerRow; i++) {
+                beatCounter++;
+                const beat = {
+                    id: beatCounter,
+                    keys: []
+                };
+                beats.push(beat);
+            }
+            
+            renderBeats();
+            updateBeatCount();
+            triggerAutoSave();
+            
+            return beats.length - oldBeatCount; // 返回新增的數量
+        }
+
+        // 滾動監聽功能
+        function setupScrollListener() {
+            let scrollHintShown = false;
+            
+            window.addEventListener('scroll', function() {
+                // 防抖處理
+                if (!isScrolling) {
+                    isScrolling = true;
+                    
+                    // 顯示滾動提示（只顯示一次）
+                    if (!scrollHintShown) {
+                        const scrollHint = document.getElementById('scrollHint');
+                        scrollHint.style.display = 'block';
+                        scrollHintShown = true;
+                        setTimeout(() => {
+                            scrollHint.style.display = 'none';
+                        }, 3000);
+                    }
+                }
+                
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    isScrolling = false;
+                    
+                    // 檢查是否滾動到接近底部
+                    const scrollPosition = window.innerHeight + window.scrollY;
+                    const documentHeight = document.documentElement.scrollHeight;
+                    const threshold = 150; // 距離底部150px時觸發
+                    
+                    if (scrollPosition >= documentHeight - threshold) {
+                        // 記錄當前滾動位置
+                        const currentScrollTop = window.scrollY;
+                        
+                        // 自動新增一整排拍子
+                        const addedCount = addRowOfBeats();
+                        
+                        // 顯示新增通知
+                        if (addedCount > 0) {
+                            showNotification(`✨ 滾動自動新增 ${addedCount} 個拍子（第 ${beats.length - addedCount + 1}-${beats.length} 拍）`, 'success');
+                            
+                            // 等待DOM更新後，調整滾動位置
+                            setTimeout(() => {
+                                // 計算新增內容的高度（大約）
+                                const estimatedRowHeight = 200; // 每排拍子的估計高度
+                                const scrollBackAmount = estimatedRowHeight * 0.7; // 回滾70%的新增高度
+                                
+                                // 稍微往上滾動，讓用戶可以繼續下滑
+                                window.scrollTo({
+                                    top: currentScrollTop + scrollBackAmount,
+                                    behavior: 'smooth'
+                                });
+                            }, 100);
+                        }
+                    }
+                }, 100);
+            });
+
+            // 監聽窗口大小變化，重新計算每行拍子數
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    // 重新渲染以適應新的寬度
+                    renderBeats();
+                }, 300);
+            });
+        }
         
         // 鍵盤快捷鍵
         document.addEventListener('keydown', function(e) {
+            // 避免在輸入框中觸發
+            if (e.target.tagName === 'INPUT') return;
+            
             // Ctrl+N: 新增拍子
             if (e.ctrlKey && e.key === 'n') {
                 e.preventDefault();
                 addBeat();
+            }
+            // Ctrl+G: 生成JSON（彈出視窗）
+            else if (e.ctrlKey && e.key === 'g') {
+                e.preventDefault();
+                generateJSONModal();
             }
             // Ctrl+S: 下載JSON
             else if (e.ctrlKey && e.key === 's') {
@@ -968,6 +1250,17 @@
                 e.preventDefault();
                 loadFromStorage();
             }
+            // Escape: 關閉彈出視窗
+            else if (e.key === 'Escape') {
+                closeJsonModal();
+            }
+        });
+
+        // 點擊彈出視窗外部關閉視窗
+        document.getElementById('jsonModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeJsonModal();
+            }
         });
         
         // 初始化
@@ -986,16 +1279,11 @@
                     hasStoredData = window.pianoEditorStorage !== undefined;
                 }
 
-                if (hasStoredData) {
-                    // 詢問是否載入暫存資料
-                    if (confirm('發現暫存資料，是否要載入？')) {
-                        loadFromStorage();
-                    } else {
-                        addBeat();  // 新增一個空拍子開始
-                    }
-                } else {
-                    addBeat();  // 初始添加一個空拍子
+                // 如果沒有暫存資料，新增一個空拍子作為開始
+                if (!hasStoredData) {
+                    addBeat();
                 }
+
             } catch (error) {
                 console.error('初始化載入失敗:', error);
                 addBeat();  // 發生錯誤時還是新增一個空拍子
@@ -1004,11 +1292,12 @@
             updateBeatCount();
             updateStorageStatus();
             setupAutoSaveListeners();
+            setupScrollListener();
             
             // 顯示快捷鍵提示
             setTimeout(() => {
                 const storageType = checkLocalStorageSupport() ? '永久暫存' : '臨時暫存';
-                showNotification(`✨ 快捷鍵: Ctrl+N 新增, Ctrl+S 下載, Ctrl+O 載入, Ctrl+Shift+S ${storageType}, Ctrl+L 載入暫存`);
+                showNotification(`✨ 快捷鍵: Ctrl+N 新增, Ctrl+G 生成JSON, Ctrl+S 下載, Ctrl+O 載入, Ctrl+Shift+S ${storageType}, Ctrl+L 載入暫存`);
             }, 1500);
         }
         
